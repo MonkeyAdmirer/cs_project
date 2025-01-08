@@ -2,6 +2,7 @@
 import streamlit as st
 import requests
 import urllib.parse
+import sqlite3
 
 # Steam OAuth Configuration
 STEAM_OPENID_URL = "https://steamcommunity.com/openid/login"
