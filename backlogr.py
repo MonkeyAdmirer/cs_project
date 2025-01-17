@@ -10,6 +10,7 @@ def initializeDB():
     connection = sqlite3.connect('./peyton.db')
     cursor = connection.cursor()
 
+    # Create Completed table with fields for 100% and On Hold status
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Completed (
             name TEXT NOT NULL,
@@ -31,10 +32,10 @@ def initializeDB():
     connection.close()
 
 def get_completed():
-    # Fetch all games from the Completed table, including 100% and hold status
+    # Modified to return all rows from Completed table
     connection = sqlite3.connect('./peyton.db')
     cursor = connection.cursor()
-    result = cursor.execute("SELECT * FROM Completed;").fetchall()
+    result = cursor.execute("SELECT name, hundredpercent, hold FROM Completed;").fetchall()
     connection.close()
     return result
 
@@ -44,7 +45,7 @@ def get_playing():
     cursor = connection.cursor()
     result = cursor.execute("SELECT name FROM Playing;").fetchall()
     connection.close()
-    return result
+    return [r[0] for r in result]  # Convert tuples to list of names
 
 def get_notplayed():
     # Fetch all games from the Not Played table
@@ -52,16 +53,29 @@ def get_notplayed():
     cursor = connection.cursor()
     result = cursor.execute("SELECT name FROM NotPlayed;").fetchall()
     connection.close()
-    return result
+    return [r[0] for r in result]  # Convert tuples to list of names
 
 def add_completed(name, hundred, hold):
-    # Add a game to the Completed table with its 100% and hold status
+    # First check if the game exists
     connection = sqlite3.connect('./peyton.db')
     cursor = connection.cursor()
-    cursor.execute(
-        "INSERT INTO Completed (name, hundredpercent, hold) VALUES (?, ?, ?);",
-        (name, hundred, hold),
-    )
+    
+    # Check if game already exists
+    existing = cursor.execute("SELECT * FROM Completed WHERE name = ?", (name,)).fetchone()
+    
+    if existing:
+        # Update existing record
+        cursor.execute(
+            "UPDATE Completed SET hundredpercent = ?, hold = ? WHERE name = ?;",
+            (hundred, hold, name)
+        )
+    else:
+        # Insert new record
+        cursor.execute(
+            "INSERT INTO Completed (name, hundredpercent, hold) VALUES (?, ?, ?);",
+            (name, hundred, hold)
+        )
+    
     connection.commit()
     connection.close()
 
@@ -80,11 +94,6 @@ def add_notplayed(name):
     cursor.execute("INSERT INTO NotPlayed (name) VALUES (?);", (name,))
     connection.commit()
     connection.close()
-
-def is_duplicate(name):
-    # Check if a game is already categorized in any table
-    categorized_games = set(get_completed() + get_playing() + get_notplayed())
-    return name in categorized_games
 
 # Function to remove a game from a specific category
 def remove_game(table_name, game_name):
@@ -147,6 +156,8 @@ def fetch_steam_library(steam_id):
 # Initialize session state
 if "steam_id" not in st.session_state:
     st.session_state.steam_id = None
+if "game_categories" not in st.session_state:
+    st.session_state.game_categories = {}
 
 # Streamlit App
 st.title("Backlogr")
@@ -154,7 +165,7 @@ st.title("Backlogr")
 # Login button and redirection
 if st.session_state.steam_id is None:
     st.write("To start tracking your backlog, log in with your Steam account.")
-    
+
     if st.button("Login with Steam"):
         auth_url = authenticate_with_steam()
         st.markdown(f"[Click here to authenticate with Steam]({auth_url})", unsafe_allow_html=True)
@@ -176,58 +187,124 @@ else:
 if st.session_state.get("steam_id"):
     st.write("Fetching your Steam library...")
     library = fetch_steam_library(st.session_state["steam_id"])
+    
     if library:
-        categorized_games = set([row[0] for row in get_completed()] + get_playing() + get_notplayed())
-        st.write(f"Found {len(library)} games in your library:")
+        st.write("### Categorized Games")
+        
+        # Get all completed games
+        completed_games = get_completed()
+        
+        # Display Completed (100%) games
+        st.write("**Completed (100%)**")
+        hundred_percent_games = [game for game in completed_games if game[1] == "Yes"]
+        if hundred_percent_games:
+            for game in hundred_percent_games:
+                if st.button(f"Remove {game[0]}", key=f"remove-100-{game[0]}"):
+                    remove_game("Completed", game[0])
+                    st.session_state.game_categories[game[0]] = ""
+                    st.rerun()
+        else:
+            st.write("No games in Completed (100%) category.")
+        
+        # Display On Hold games
+        st.write("**On Hold**")
+        on_hold_games = [game for game in completed_games if game[2] == "Yes"]
+        if on_hold_games:
+            for game in on_hold_games:
+                if st.button(f"Remove {game[0]}", key=f"remove-hold-{game[0]}"):
+                    remove_game("Completed", game[0])
+                    st.session_state.game_categories[game[0]] = ""
+                    st.rerun()
+        else:
+            st.write("No games in On Hold category.")
+        
+        # Display regular Completed games
+        st.write("**Completed**")
+        regular_completed = [game for game in completed_games if game[1] == "No" and game[2] == "No"]
+        if regular_completed:
+            for game in regular_completed:
+                if st.button(f"Remove {game[0]}", key=f"remove-completed-{game[0]}"):
+                    remove_game("Completed", game[0])
+                    st.session_state.game_categories[game[0]] = ""
+                    st.rerun()
+        else:
+            st.write("No games in Completed category.")
 
+        # Display Playing games
+        st.write("**Playing**")
+        playing_games = get_playing()
+        if playing_games:
+            for game in playing_games:
+                if st.button(f"Remove {game}", key=f"remove-playing-{game}"):
+                    remove_game("Playing", game)
+                    st.session_state.game_categories[game] = ""
+                    st.rerun()
+        else:
+            st.write("No games in Playing category.")
+
+        # Display Not Played games
+        st.write("**Not Played**")
+        not_played_games = get_notplayed()
+        if not_played_games:
+            for game in not_played_games:
+                if st.button(f"Remove {game}", key=f"remove-notplayed-{game}"):
+                    remove_game("NotPlayed", game)
+                    st.session_state.game_categories[game] = ""
+                    st.rerun()
+        else:
+            st.write("No games in Not Played category.")
+
+        # Display game library with categorization options
+        st.write(f"\n### Your Library ({len(library)} games)")
         for game in library:
             name = game["name"]
             playtime = game["playtime_forever"]
 
-            # Skip already categorized games
-            if name in categorized_games:
-                continue
+            if name not in st.session_state.game_categories:
+                st.session_state.game_categories[name] = ""
 
-            # Dropdown for categorizing games
-            options = ["Select a category", "Completed (100%)", "On Hold", "Playing", "Not Played"]
-            selection = st.selectbox(f"{name} ({playtime} minutes played)", options, key=name)
+            options = [
+                "Select a category",
+                "Completed",
+                "Completed (100%)",
+                "On Hold",
+                "Playing",
+                "Not Played",
+            ]
+            
+            selection = st.selectbox(
+                f"{name} ({playtime} minutes played)",
+                options,
+                index=options.index(st.session_state.game_categories[name])
+                if st.session_state.game_categories[name] in options
+                else 0,
+                key=f"dropdown-{name}",
+            )
 
-           # Add the game to the selected category
-            if selection == "Completed (100%)":
-                add_completed(name, "Yes", "No")
-                st.session_state["refresh"] = not st.session_state.get("refresh", False)  # Simulate rerun
-            elif selection == "On Hold":
-                add_completed(name, "No", "Yes")
-                st.session_state["refresh"] = not st.session_state.get("refresh", False)
-            elif selection == "Playing":
-                add_playing(name)
-                st.session_state["refresh"] = not st.session_state.get("refresh", False)
-            elif selection == "Not Played":
-                add_notplayed(name)
-                st.session_state["refresh"] = not st.session_state.get("refresh", False)
+            if selection != "Select a category" and selection != st.session_state.game_categories[name]:
+                # Remove from previous category if it exists
+                if name in [g[0] for g in completed_games]:
+                    remove_game("Completed", name)
+                elif st.session_state.game_categories[name] == "Playing":
+                    remove_game("Playing", name)
+                elif st.session_state.game_categories[name] == "Not Played":
+                    remove_game("NotPlayed", name)
+
+                # Add to new category
+                if selection == "Completed (100%)":
+                    add_completed(name, "Yes", "No")
+                elif selection == "On Hold":
+                    add_completed(name, "No", "Yes")
+                elif selection == "Completed":
+                    add_completed(name, "No", "No")
+                elif selection == "Playing":
+                    add_playing(name)
+                elif selection == "Not Played":
+                    add_notplayed(name)
+
+                st.session_state.game_categories[name] = selection
+                st.rerun()
     else:
-        st.write("It looks like your Steam library is private or no games were found. Please make your library public in your Steam settings.")
-
-# Display categorized games and allow users to remove them from categories
-st.write("### Categorized Games")
-for category, fetch_func, remove_func in [
-    ("Completed (100%)", get_completed, lambda name: remove_game("Completed", name)),
-    ("Playing", get_playing, lambda name: remove_game("Playing", name)),
-    ("Not Played", get_notplayed, lambda name: remove_game("NotPlayed", name)),
-]:
-    st.write(f"**{category}**")
-    games = fetch_func()
-    for game in games:
-        game_name = game[0] if isinstance(game, tuple) else game  # Handle tuple or single value
-        if st.button(f"Remove {game_name}", key=f"remove-{category}-{game_name}"):
-            remove_func(game_name)
-            # Clear cache or reset Streamlit's session state for proper updates
-            if "removed_game" not in st.session_state:
-                st.session_state["removed_game"] = []
-            st.session_state["removed_game"].append(game_name)
-
-# Clear cached data and refresh the UI without rerunning the entire app
-if "removed_game" in st.session_state:
-    st.session_state["removed_game"] = []
-    st.cache_data.clear()  # Clear cached data
-    st.experimental_update_report_ctx()  # Streamlit-specific method to refresh UI state so the updated categories can be displayed
+        st.error("Failed to fetch Steam library. Please try again.")
+else:
+    st.write("Please log in to view and manage your categorized games.")
