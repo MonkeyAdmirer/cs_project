@@ -14,8 +14,6 @@ import streamlit as st
 import requests
 import urllib.parse
 import sqlite3
-# To scrape the web for store tags (genres)
-from bs4 import BeautifulSoup
 # Used to help generate even more unique keys for games
 import time
 import uuid
