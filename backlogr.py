@@ -3,9 +3,14 @@ import streamlit as st
 import requests
 import urllib.parse
 import sqlite3
+# To scrape the web for store tags (genres)
+from bs4 import BeautifulSoup
 # Used to help generate even more unique keys for games
 import time
 import uuid
+# To create visual representations
+import matplotlib.pyplot as plt
+import numpy as np
 
 def sanitize_key(text):
     """Sanitize text to be used as a key by removing special characters"""
@@ -219,16 +224,22 @@ def verify_steam_login(query_params):
 
 # Fetch user's Steam library
 def fetch_steam_library(steam_id):
+    """Fetch basic game information without genres"""
     url = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v1/"
     params = {
         "key": STEAM_API_KEY,
         "steamid": steam_id,
         "include_appinfo": True,
+        "include_played_free_games": True
     }
-    response = requests.get(url, params=params)
-    if response.ok:
-        return response.json().get("response", {}).get("games", [])
-    return []
+    try:
+        response = requests.get(url, params=params)
+        if response.ok:
+            return response.json().get("response", {}).get("games", [])
+        return []
+    except Exception as e:
+        print(f"Error fetching library: {e}")
+        return []
 
 def get_game_achievements(steam_id, app_id):
     """Fetch achievement data for a specific game."""
@@ -274,7 +285,7 @@ with st.sidebar:
         # If logged in, show all menu options
         selected_menu = st.radio(
             "Select Menu",
-            ["Login Menu", "Library Menu", "Sorted Menu"],
+            ["Login Menu", "Library Menu", "Sorted Menu", "Visual Stats"],  # Added "Visual Stats"
             key="navigation"
         )
 
@@ -564,3 +575,168 @@ if selected_menu == "Sorted Menu" and st.session_state.steam_id:
                             st.rerun()
         else:
             st.write("No games in this category.")
+
+elif selected_menu == "Visual Stats" and st.session_state.steam_id:
+    st.write("### Genre Statistics")
+    
+    # Import required libraries
+    import matplotlib.pyplot as plt
+    import numpy as np
+    
+    # Fetch library if not already in session state
+    library = fetch_steam_library(st.session_state.steam_id)
+    
+    if library:
+        st.write(f"Analyzing {len(library)} games in your library...")
+        
+        # Process genre data
+        genre_data = {
+            'Action': {'total_playtime': 0, 'game_count': 0},
+            'Adventure': {'total_playtime': 0, 'game_count': 0},
+            'RPG': {'total_playtime': 0, 'game_count': 0},
+            'Strategy': {'total_playtime': 0, 'game_count': 0},
+            'Simulation': {'total_playtime': 0, 'game_count': 0},
+            'Sports': {'total_playtime': 0, 'game_count': 0},
+            'Indie': {'total_playtime': 0, 'game_count': 0},
+            'Other': {'total_playtime': 0, 'game_count': 0}
+        }
+        
+        for game in library:
+            playtime = game.get('playtime_forever', 0) / 60  # Convert to hours
+            
+            # Expanded keyword lists for better genre detection
+            action_keywords = {'action', 'shooter', 'fps', 'fight', 'combat', 'battle', 'warfare', 'war', 'dead', 'doom', 
+                             'counter', 'strike', 'call of duty', 'battlefield', 'halo', 'souls', 'metal gear', 
+                             'resident evil', 'hitman', 'portal', 'borderlands'}
+            
+            adventure_keywords = {'adventure', 'quest', 'journey', 'exploration', 'tomb raider', 'uncharted', 
+                                'assassin', 'zelda', 'walking', 'life is strange', 'telltale', 'story'}
+            
+            rpg_keywords = {'rpg', 'role', 'fantasy', 'witcher', 'elder scrolls', 'fallout', 'final fantasy', 
+                           'mass effect', 'dragon', 'souls', 'persona', 'dark souls', 'skyrim', 'diablo', 
+                           'kingdoms', 'divinity', 'baldur'}
+            
+            strategy_keywords = {'strategy', 'tactic', 'command', 'civilization', 'total war', 'hearts of iron', 
+                               'crusader kings', 'age of empires', 'starcraft', 'warhammer', 'xcom', 'stellaris',
+                               'city builder', 'management', 'defense', 'tower'}
+            
+            simulation_keywords = {'simulation', 'simulator', 'tycoon', 'farm', 'euro truck', 'flight', 'sims',
+                                 'cities:', 'city:', 'planet', 'zoo', 'hospital', 'cooking', 'fishing', 'train',
+                                 'building', 'construction'}
+            
+            sports_keywords = {'sports', 'football', 'soccer', 'basketball', 'nba', 'fifa', 'baseball', 'racing',
+                             'race', 'car', 'drift', 'rally', 'forza', 'need for speed', 'dirt', 'golf', 'tennis',
+                             'skateboard', 'skate', 'tony hawk', 'motorsport', 'rugby', 'hockey'}
+            
+            indie_keywords = {'indie', 'pixel', 'roguelike', 'rogue', 'platformer', 'puzzle', 'stardew', 'terraria',
+                            'minecraft', 'undertale', 'hollow knight', 'binding of isaac', 'inside', 'limbo', 
+                            'celeste', 'hades', "don't starve", 'castle crashers'}
+
+            name = game.get('name', '').lower()
+            
+            # More sophisticated genre detection
+            if any(keyword in name for keyword in action_keywords):
+                genre = 'Action'
+            elif any(keyword in name for keyword in adventure_keywords):
+                genre = 'Adventure'
+            elif any(keyword in name for keyword in rpg_keywords):
+                genre = 'RPG'
+            elif any(keyword in name for keyword in strategy_keywords):
+                genre = 'Strategy'
+            elif any(keyword in name for keyword in simulation_keywords):
+                genre = 'Simulation'
+            elif any(keyword in name for keyword in sports_keywords):
+                genre = 'Sports'
+            elif any(keyword in name for keyword in indie_keywords):
+                genre = 'Indie'
+            else:
+                genre = 'Other'
+            
+            genre_data[genre]['total_playtime'] += playtime
+            genre_data[genre]['game_count'] += 1
+        
+        # Calculate average playtime for each genre
+        avg_playtime = {
+            genre: data['total_playtime'] / data['game_count'] if data['game_count'] > 0 else 0
+            for genre, data in genre_data.items()
+        }
+        
+        # Remove genres with no games
+        avg_playtime = {k: v for k, v in avg_playtime.items() if v > 0}
+        
+        # Create the visualizations with dark theme
+        plt.style.use('dark_background')
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
+        
+        # Set figure background color to match website
+        fig.patch.set_facecolor('#1E1E1E')
+        ax1.set_facecolor('#1E1E1E')
+        ax2.set_facecolor('#1E1E1E')
+        
+        # Pie chart
+        values = list(avg_playtime.values())
+        labels = list(avg_playtime.keys())
+        
+        if values:  # Only create charts if we have data
+            wedges, texts, autotexts = ax1.pie(
+                values,
+                labels=labels,
+                autopct='%1.1f%%',
+                textprops={'fontsize': 8, 'color': 'white'},
+                colors=plt.cm.Set3.colors
+            )
+            ax1.set_title('Distribution of Average Playtime by Genre', color='white')
+            
+            # Bar chart
+            y_pos = np.arange(len(labels))
+            game_counts = [genre_data[genre]['game_count'] for genre in labels]
+            
+            ax2.barh(y_pos, values, color=plt.cm.Set3.colors)
+            ax2.set_yticks(y_pos)
+            ax2.set_yticklabels(labels, color='white')
+            ax2.invert_yaxis()
+            ax2.set_xlabel('Average Hours Played', color='white')
+            ax2.set_title('Average Playtime by Genre', color='white')
+            
+            # Make axis labels white
+            ax2.tick_params(colors='white')
+            ax2.xaxis.label.set_color('white')
+            
+            # Add game count annotations in white
+            for i, v in enumerate(values):
+                ax2.text(v + 1, i, f'({game_counts[i]} games)', va='center', fontsize=8, color='white')
+            
+            plt.tight_layout()
+            
+            # Display the chart in Streamlit
+            st.pyplot(fig)
+            
+            # Display detailed statistics
+            st.write("### Detailed Statistics")
+            
+            # Create a two-column layout for statistics
+            col1, col2 = st.columns(2)
+            
+            # Sort genres by average playtime
+            sorted_stats = sorted(
+                [(genre, avg_playtime[genre], genre_data[genre]['game_count']) 
+                 for genre in labels],
+                key=lambda x: x[1],
+                reverse=True
+            )
+            
+            # Split the stats between columns
+            mid_point = len(sorted_stats) // 2
+            
+            with col1:
+                for genre, avg_time, count in sorted_stats[:mid_point]:
+                    st.write(f"**{genre}**: {avg_time:.1f} hours avg. ({count} games)")
+                    
+            with col2:
+                for genre, avg_time, count in sorted_stats[mid_point:]:
+                    st.write(f"**{genre}**: {avg_time:.1f} hours avg. ({count} games)")
+        else:
+            st.warning("No playtime data available for analysis.")
+            
+    else:
+        st.error("Failed to fetch library data. Please try again.")
