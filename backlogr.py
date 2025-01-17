@@ -1,3 +1,14 @@
+"""
+Backlogr: A Steam library management tool with game categorization, reviews, and visual statistics.
+
+Features:
+1. Login using Steam OAuth.
+2. Automatically sort games based on playtime.
+3. Allow users to categorize games manually into "Completed", "Playing", "Not Played", etc.
+4. Provide a review system with a slider for ratings.
+5. Visualize game statistics by genre and playtime distribution.
+"""
+
 # External imports
 import streamlit as st
 import requests
@@ -13,7 +24,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def sanitize_key(text):
-    """Sanitize text to be used as a key by removing special characters"""
+    """
+    Sanitize a given text to generate a clean and safe key for use in Streamlit elements.
+
+    This function removes all non-alphanumeric characters from the input text, ensuring that the 
+    resulting key is compatible with Streamlit's key requirements and free of special characters 
+    that could cause issues.
+
+    Args:
+        text (str): The input string to be sanitized.
+
+    Returns:
+        str: A sanitized string containing only alphanumeric characters.
+    """
     return ''.join(c for c in text if c.isalnum())
 
 # Database Code: Initializes the database and defines methods to interact with it
@@ -242,7 +265,16 @@ def fetch_steam_library(steam_id):
         return []
 
 def get_game_achievements(steam_id, app_id):
-    """Fetch achievement data for a specific game."""
+    """
+    Fetch achievement data for a specific game from Steam API.
+
+    Args:
+        steam_id (str): The user's Steam ID.
+        app_id (int): The game's App ID.
+
+    Returns:
+        list: A list of achievement data, or None if unavailable.
+    """
     url = "http://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/"
     params = {
         "key": STEAM_API_KEY,
@@ -323,7 +355,10 @@ elif selected_menu == "Library Menu" and st.session_state.steam_id:
     library = fetch_steam_library(st.session_state["steam_id"])
     
     def is_game_categorized(game_name):
-        """Check if a game exists in any category"""
+        """
+        Check if a game already exists in any category.
+        Prevents duplicate categorization during automatic sorting.
+        """
         # Check Completed table
         completed_games = [g[0] for g in get_completed()]
         if game_name in completed_games:
@@ -408,7 +443,17 @@ if selected_menu == "Sorted Menu" and st.session_state.steam_id:
     reviews = get_reviews()
 
     def handle_removal(category_name, game_name):
-        """Handles removing a game from the specified category and updates the session state."""
+        """
+        Handles removing a game from the specified category.
+        Updates the session state and database.
+
+        Args:
+            category_name (str): The category from which to remove the game.
+            game_name (str): The name of the game to remove.
+
+        Returns:
+            bool: True if successful, False otherwise.
+        """
         category_table_map = {
             "Completed": "Completed",
             "Playing": "Playing",
