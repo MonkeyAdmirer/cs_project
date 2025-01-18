@@ -623,7 +623,7 @@ elif selected_menu == "Visual Stats" and st.session_state.steam_id:
             
             rpg_keywords = {'rpg', 'role', 'fantasy', 'witcher', 'elder scrolls', 'fallout', 'final fantasy', 
                            'mass effect', 'dragon', 'souls', 'persona', 'dark souls', 'skyrim', 'diablo', 'chrono trigger', # goated game
-                           'kingdom', 'divinity', 'baldur', 'souls', 'deus ex', 'elden', 'path of exile', 'dragon', 'cyberpunk'}
+                           'kingdom', 'divinity', 'baldur', 'deus ex', 'elden', 'path of exile', 'dragon', 'cyberpunk'}
             
             strategy_keywords = {'strategy', 'tactic', 'command', 'civilization', 'total war', 'hearts of iron',
                                'crusader kings', 'age of empires', 'starcraft', 'dawn of war', 'xcom', 'stellaris',
