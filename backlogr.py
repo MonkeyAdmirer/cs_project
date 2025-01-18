@@ -14,6 +14,9 @@ import streamlit as st
 import requests
 import urllib.parse
 import sqlite3
+# To hide API key
+from dotenv import load_dotenv
+import os
 # To create visual representations
 import matplotlib.pyplot as plt
 import numpy as np
@@ -206,10 +209,12 @@ def remove_game(table_name, game_name):
 # Initialize the database
 initializeDB()
 
+load_dotenv()
+
 # Steam OAuth Configuration
 STEAM_OPENID_URL = "https://steamcommunity.com/openid/login"
 REDIRECT_URI = "http://localhost:8501"  # Replace with your Streamlit app's URL
-STEAM_API_KEY = "0E946B515504AE10AE711984A10A7AE2"  # Replace with your Steam API Key
+STEAM_API_KEY = os.getenv("STEAM_API_KEY")
 
 # Construct the OpenID request URL
 def authenticate_with_steam():
@@ -285,7 +290,7 @@ with st.sidebar:
         # If logged in, show all menu options
         selected_menu = st.radio(
             "Select Menu",
-            ["Login Menu", "Library Menu", "Sorted Menu", "Visual Stats"],  # Added "Visual Stats"
+            ["Login Menu", "Library Menu", "Sorted Menu", "Visual Stats"], 
             key="navigation"
         )
 
