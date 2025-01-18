@@ -259,33 +259,6 @@ def fetch_steam_library(steam_id):
         print(f"Error fetching library: {e}")
         return []
 
-def get_game_achievements(steam_id, app_id):
-    """
-    Fetch achievement data for a specific game from Steam API.
-
-    Args:
-        steam_id (str): The user's Steam ID.
-        app_id (int): The game's App ID.
-
-    Returns:
-        list: A list of achievement data, or None if unavailable.
-    """
-    url = "http://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/"
-    params = {
-        "key": STEAM_API_KEY,
-        "steamid": steam_id,
-        "appid": app_id,
-    }
-    try:
-        response = requests.get(url, params=params)
-        if response.ok:
-            data = response.json()
-            if data.get("playerstats", {}).get("success", False):
-                return data["playerstats"].get("achievements", [])
-    except:
-        pass
-    return None
-
 # Initialize session state
 if "steam_id" not in st.session_state:
     st.session_state.steam_id = None
