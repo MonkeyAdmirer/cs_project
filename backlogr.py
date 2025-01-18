@@ -592,10 +592,6 @@ if selected_menu == "Sorted Menu" and st.session_state.steam_id:
 elif selected_menu == "Visual Stats" and st.session_state.steam_id:
     st.write("### Genre Statistics")
     
-    # Import required libraries
-    import matplotlib.pyplot as plt
-    import numpy as np
-    
     # Fetch library if not already in session state
     library = fetch_steam_library(st.session_state.steam_id)
     
