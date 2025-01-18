@@ -14,9 +14,6 @@ import streamlit as st
 import requests
 import urllib.parse
 import sqlite3
-# Used to help generate even more unique keys for games
-import time
-import uuid
 # To create visual representations
 import matplotlib.pyplot as plt
 import numpy as np
@@ -649,18 +646,18 @@ elif selected_menu == "Visual Stats" and st.session_state.steam_id:
             
             # Expanded keyword lists for better genre detection
             action_keywords = {'action', 'shooter', 'fps', 'fight', 'combat', 'battle', 'warfare', 'war', 'dead', 'doom', 
-                             'counter', 'strike', 'call of duty', 'battlefield', 'halo', 'souls', 'metal gear', 
-                             'resident evil', 'hitman', 'portal', 'borderlands'}
+                             'counter', 'strike', 'call of duty', 'battlefield', 'halo', 'metal gear', 'sleeping dogs', 'turok',
+                             'resident evil', 'hitman', 'portal', 'borderlands', 'space marine', 'wukong', 'sekiro', 'metro', 'max payne', 'half-life'}
             
-            adventure_keywords = {'adventure', 'quest', 'journey', 'exploration', 'tomb raider', 'uncharted', 
-                                'assassin', 'zelda', 'walking', 'life is strange', 'telltale', 'story'}
+            adventure_keywords = {'adventure', 'quest', 'journey', 'exploration', 'tomb raider', 'uncharted', 's.t.a.l.k.e.r.', 'red dead redemption',
+                                'assassin', 'walking', 'life is strange', 'telltale', 'story', 'tsushima', 'last of us', 'dying light', }
             
             rpg_keywords = {'rpg', 'role', 'fantasy', 'witcher', 'elder scrolls', 'fallout', 'final fantasy', 
-                           'mass effect', 'dragon', 'souls', 'persona', 'dark souls', 'skyrim', 'diablo', 
-                           'kingdoms', 'divinity', 'baldur'}
+                           'mass effect', 'dragon', 'souls', 'persona', 'dark souls', 'skyrim', 'diablo', 'chrono trigger', # goated game
+                           'kingdom', 'divinity', 'baldur', 'souls', 'deus ex', 'elden', 'path of exile', 'dragon', 'cyberpunk'}
             
-            strategy_keywords = {'strategy', 'tactic', 'command', 'civilization', 'total war', 'hearts of iron', 
-                               'crusader kings', 'age of empires', 'starcraft', 'warhammer', 'xcom', 'stellaris',
+            strategy_keywords = {'strategy', 'tactic', 'command', 'civilization', 'total war', 'hearts of iron',
+                               'crusader kings', 'age of empires', 'starcraft', 'dawn of war', 'xcom', 'stellaris',
                                'city builder', 'management', 'defense', 'tower'}
             
             simulation_keywords = {'simulation', 'simulator', 'tycoon', 'farm', 'euro truck', 'flight', 'sims',
@@ -673,7 +670,7 @@ elif selected_menu == "Visual Stats" and st.session_state.steam_id:
             
             indie_keywords = {'indie', 'pixel', 'roguelike', 'rogue', 'platformer', 'puzzle', 'stardew', 'terraria',
                             'minecraft', 'undertale', 'hollow knight', 'binding of isaac', 'inside', 'limbo', 
-                            'celeste', 'hades', "don't starve", 'castle crashers'}
+                            'celeste', 'hades', "don't starve", 'castle crashers', 'balatro'}
 
             name = game.get('name', '').lower()
             
